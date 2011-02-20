@@ -83,17 +83,13 @@
 			   queue)
 			  (%work-queue-mutex queue)
 			  +work-wait-time+)))
-		   (print "cond res: " res)
-		   (print +work-wait-time+)
-		   (if (not res)
+		    (if (not res)
 		       (begin
-			  (print "timed out")
 			  (%work-queue-idle-threads-set!
 			   queue
 			   (- (%work-queue-idle-threads queue) 1))
 			  #f)
 		       (begin
-			  (print "signal received")
 			  (%work-queue-idle-threads-set!
 			   queue (- (%work-queue-idle-threads queue) 1))
 			  (loop (work-queue-empty? queue))))))
