@@ -17,4 +17,9 @@
  
 (module __pthread_extra_make_lib
    (import work-queue)
+   (import rw-lock)
+   (import semaphore)
+   (import future)
+   (import concurrent-queue)
+   (import actor)
    (eval (export-all)))

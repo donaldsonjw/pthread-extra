@@ -19,7 +19,62 @@
    (main main))
 
 
+(define (ping-pong-message? msg)
+   (and (list? msg)
+	(eq? (car msg) 'ping-pong)))
+
+(define (ping-pong-body msg)
+   (caddr msg))
+
+(define (ping-pong-sender msg)
+   (cadr msg))
+
+(define (make-ping-pong-message action)
+   (list 'ping-pong (current-actor) action))
+
+(define (make-pong-action ping count)
+   (lambda ()
+      (actor-send ping
+		    (make-ping-pong-message 'pong))
+   (let loop ((msg (actor-receive (current-actor)))
+	      (remaining count))
+      (if (ping-pong-message? msg)
+	  (let ((body (ping-pong-body msg)))
+	     (case body
+		((ping)
+		 (print "Pong:  ping with " remaining " remaining")
+		 (if (> remaining 0)
+		     (begin
+			(actor-send ping
+			   (make-ping-pong-message 'pong))
+			(loop (actor-receive (current-actor))
+			   (- remaining 1)))
+		     (actor-send ping
+			(make-ping-pong-message 'exit))))
+		(else
+		 #unspecified)))))))
+
+(define (ping-action)
+   (let loop ((msg (actor-receive (current-actor))))
+      (if (ping-pong-message? msg)
+	  (let ((body (ping-pong-body msg)))
+	     (case body
+		((pong)
+		 (print "Ping:  pong")
+		 (actor-send (ping-pong-sender msg)
+		    (make-ping-pong-message 'ping)) 
+		 (loop (actor-receive (current-actor))))
+		(else
+		 #unspecified))))))
 
 (define (main args)
    (let ((wq (make-work-queue 6)))
-      (work-queue-finish! wq)))
+      (work-queue-finish! wq))
+
+   (let* ((ping-actor (make-actor ping-action))
+	  (pong-actor (make-actor (make-pong-action ping-actor 10))))
+      (actor-start-joinable! ping-actor)
+      (actor-start-joinable! pong-actor)
+      (actor-join! ping-actor)
+      (actor-join! pong-actor)
+     ))

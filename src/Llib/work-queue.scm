@@ -1,4 +1,4 @@
-;;;; Copyright(c) 2010 Joseph Donaldson(donaldsonjw@yahoo.com) 
+;;;; Copyright(c) 2010, 2011 Joseph Donaldson(donaldsonjw@yahoo.com) 
 ;;;; This file is part of Pthread-extra.
 ;;;;
 ;;;;     Pthread-extra is free software: you can redistribute it and/or modify
@@ -14,22 +14,10 @@
 ;;;;     You should have received a copy of the GNU Lesser General Public
 ;;;;     License along with Pthread-extra.  If not, see
 ;;;;     <http://www.gnu.org/licenses/>.
-;;;; Copyright(c) 2010 Joseph Donaldson(donaldsonjw@yahoo.com) 
-;;;; This file is part of Pthread-extra.
-;;;;
-;;;;     Pthread-extra is free software: you can redistribute it and/or modify
-;;;;     it under the terms of the GNU Lesser General Public License as
-;;;;     published by the Free Software Foundation, either version 3 of the
-;;;;     License, or (at your option) any later version.
-;;;;
-;;;;     Pthread-extra is distributed in the hope that it will be useful, but
-;;;;     WITHOUT ANY WARRANTY; without even the implied warranty of
-;;;;     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;;;     Lesser General Public License for more details.
-;;;;
-;;;;     You should have received a copy of the GNU Lesser General Public
-;;;;     License along with Pthread-extra.  If not, see
-;;;;     <http://www.gnu.org/licenses/>.
+
+
+;;;; This is a work-queue implementation modeled after the one described in
+;;;; David Butenhof's Programming with POSIX Threads
 (module work-queue
    (library pthread)
    (static
@@ -73,44 +61,48 @@
 (define (make-work-queue-thread-thunk queue)
    (define (wait-for-work queue)
       (let loop ((empty? (work-queue-empty? queue)))
-	 (if empty?
+	 (if (and empty? (not (%work-queue-finish queue)))
 	     (begin
 		;; indicate we have an idle thread
 		(%work-queue-idle-threads-set!
-		 queue (+ (%work-queue-idle-threads queue) 1))
+		   queue (+ (%work-queue-idle-threads queue) 1))
 		(let ((res (condition-variable-wait!
-			  (%work-queue-condition-variable
-			   queue)
-			  (%work-queue-mutex queue)
-			  +work-wait-time+)))
-		    (if (not res)
+			      (%work-queue-condition-variable
+				 queue)
+			      (%work-queue-mutex queue)
+			      +work-wait-time+)))
+		   (if (not res)
 		       (begin
 			  (%work-queue-idle-threads-set!
-			   queue
-			   (- (%work-queue-idle-threads queue) 1))
+			     queue
+			     (- (%work-queue-idle-threads queue) 1))
+			  (print "ending idle thread")
 			  #f)
 		       (begin
 			  (%work-queue-idle-threads-set!
-			   queue (- (%work-queue-idle-threads queue) 1))
+			     queue (- (%work-queue-idle-threads queue) 1))
 			  (loop (work-queue-empty? queue))))))
-		#t)))
+		(if (or (not (%work-queue-finish queue))
+			(not empty?))
+		    #t
+		    #f))))
 		 
    (lambda ()
       (with-lock (%work-queue-mutex queue)
             (lambda ()
 	       (let loop ((finish (%work-queue-finish queue)))
-		  (when (and (not finish)
-			     (wait-for-work queue))
-		     
+		  (when (wait-for-work queue)
 		     (let ((thunk2 (%work-queue-pop! queue)))
 			(mutex-unlock! (%work-queue-mutex queue))
 			(thunk2)
 			(mutex-lock! (%work-queue-mutex queue)))
 		     (loop (%work-queue-finish queue))))
-	       (flush-output-port (current-output-port))
+	       ;(flush-output-port (current-output-port))
 	       (%work-queue-current-threads-set!
 		queue
 		(- (%work-queue-current-threads queue) 1))
+	       (when (= (%work-queue-current-threads queue) 0)
+		  (condition-variable-signal! (%work-queue-condition-variable queue)))
 	       ))))
 			 
 			 
@@ -118,11 +110,12 @@
 (define (work-queue-finish! queue)
    (with-lock (%work-queue-mutex queue)
       (lambda ()
-	 (%work-queue-finish-set! queue #t)))
-   (let loop ((rt (%work-queue-current-threads queue)))
-      (when (> rt 0)
-	 (sleep 1000)
-	 (loop (%work-queue-current-threads queue)))))
+	 (%work-queue-finish-set! queue #t)
+	 (let loop ((rt (%work-queue-current-threads queue)))
+	    (when (> rt 0)
+	       (condition-variable-wait! (%work-queue-condition-variable queue)
+		  (%work-queue-mutex queue))
+	       (loop (%work-queue-current-threads queue)))))))
 
 (define (work-queue-push! queue thunk2)
    (with-access::%work-queue queue (mutex
@@ -172,12 +165,14 @@
       (print (%work-queue-item-thunk (%work-queue-item-nil)))
       (do ((i 0 (+ i 1)))
 	  ((= i 3000))
-	;  (print work-queue)
+	  ;(print work-queue)
 	  (work-queue-push! work-queue (lambda ()									(print (format "~a: " (thread-name (current-thread))) i)
 															       (flush-output-port
 																(current-output-port))     
 					  )))
 
       (work-queue-finish! work-queue)
+   ;(print work-queue)
       ))
-      
+
+

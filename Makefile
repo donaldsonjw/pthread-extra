@@ -14,13 +14,13 @@ BIGLOOLIBDIR := $(shell $(BIGLOO) -eval "(print *default-lib-dir*) (exit 0)" -q)
 #install related variables
 DESTDIR = /usr
 INSTLIBDIR = $(DESTDIR)/lib
-INSTBIGLOOLIBDIR = $(LIBDIR)/bigloo/$(BIGLOO_VERSION)
+INSTBIGLOOLIBDIR = $(INSTLIBDIR)/bigloo/$(BIGLOO_VERSION)
 
 
-VERSION = 0.1
+VERSION = 0.2
 
 #Bigloo Flags
-BHEAPFLAGS = -unsafe -q -mkaddheap -mkaddlib -v2 -heap-library templater
+BHEAPFLAGS = -unsafe -q -mkaddheap -mkaddlib -v2 -heap-library pthread-extra
 
 BCOMMONFLAGS = -mkaddlib -fsharing -q \
                -copt '$(CCOMMONFLAGS)'
@@ -37,7 +37,9 @@ OBJDIR = objs
 DISTDIR = dist
 
 # sources
-BIGLOOSRCS = src/Llib/work-queue.scm
+BIGLOOSRCS = src/Llib/work-queue.scm src/Llib/rw-lock.scm \
+	     src/Llib/semaphore.scm src/Llib/future.scm \
+             src/Llib/concurrent_queue.scm src/Llib/actor.scm
 HEAPSRC = src/Misc/make_lib.scm
 
 

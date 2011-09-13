@@ -16,7 +16,7 @@
 ;;;;     <http://www.gnu.org/licenses/>.
  
 (declare-library! 'pthread-extra 
-   :version "0.1"
+   :version "0.2"
    :srfi '(pthread-extra)
    :basename "pthread-extra"
    :module-eval '__pthread_extra_make_lib)
