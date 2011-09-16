@@ -22,4 +22,5 @@
    (import future)
    (import concurrent-queue)
    (import actor)
+   (import barrier)
    (eval (export-all)))
