@@ -34,7 +34,11 @@
 	   (rw-lock-read-unlock! lock)
 	   (rw-lock-write-lock! lock)
 	   (rw-lock-try-write-lock! lock)
-	   (rw-lock-write-unlock! lock)))
+	   (rw-lock-write-unlock! lock)
+	   (rw-lock? rw-lock)))
+
+(define (rw-lock? rw-lock)
+   (%rw-lock? rw-lock))
 
 (define (make-rw-lock)
    (instantiate::%rw-lock))

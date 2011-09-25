@@ -36,7 +36,8 @@
        ))
    (export (make-work-queue max-threads)
 	   (work-queue-finish! queue)
-	   (work-queue-push! queue thunk2)))
+	   (work-queue-push! queue thunk2)
+	   (work-queue? queue)))
 
 
 (define (make-work-queue max-threads)
@@ -51,6 +52,9 @@
 		 (last (%work-queue-item-nil)))))
       nwq))
 
+
+(define (work-queue? queue)
+   (%work-queue? queue))
 
 (define (work-queue-empty? queue)
    (with-access::%work-queue queue (first last)
@@ -111,6 +115,7 @@
    (with-lock (%work-queue-mutex queue)
       (lambda ()
 	 (%work-queue-finish-set! queue #t)
+	 (condition-variable-broadcast! (%work-queue-condition-variable queue))
 	 (let loop ((rt (%work-queue-current-threads queue)))
 	    (when (> rt 0)
 	       (condition-variable-wait! (%work-queue-condition-variable queue)

@@ -17,14 +17,15 @@
 
 (module future
    (library pthread)
-   (export (class &future-timeout-error::&error))
+   (export (class &future-timeout-error::&error)
+	   (future? future))
    (static (class %future
 	      (mutex (default (make-mutex)))
 	      (cond-var (default (make-condition-variable)))
 	      (thread (default #unspecified))
 	      (done (default #f))
 	      (result (default #unspecified))))
-   (export (make-future-thread future thunk)
+   (export (make-future thunk)
 	   (future-touch future #!optional (timeout::long 0))))
 
 (define (make-future-thread future thunk)
@@ -39,7 +40,10 @@
 		     (condition-variable-broadcast! cond-var)))))))
    (instantiate::pthread (body (make-future-thunk future thunk))))
 			
-		
+
+(define (future? future)
+   (%future? future))
+
 (define (make-future thunk)
    (let ((res (instantiate::%future))) 
       (%future-thread-set! res (make-future-thread res thunk))

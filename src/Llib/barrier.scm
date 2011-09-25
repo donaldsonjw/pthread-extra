@@ -29,13 +29,17 @@
 	      parties
 	      action))
    
-   (export (class &barrier-timout-error::&error)
+   (export (class &barrier-timeout-error::&error)
 	   (class &barrier-broken-error::&error)
 	   (make-barrier parties #!optional (action (lambda () #unspecified)))
 	   (barrier-wait! barrier #!optional (timeout::long 0))
 	   (barrier-parties barrier)
-	   (barrier-get-number-waiting barrier)))
+	   (barrier-get-number-waiting barrier)
+	   (barrier? barrier)))
 
+
+(define (barrier? barrier)
+   (%barrier? barrier))
 
 
 
@@ -71,7 +75,7 @@
 				(begin
 				   (set! broken? #t)
 				   (condition-variable-broadcast! cond-var)
-				   (raise (instantiate::&barrier-timout-error
+				   (raise (instantiate::&barrier-timeout-error
 					     (proc "barrier-wait!")
 					     (msg  "barrier-wait! timed out")
 					     (obj barrier))))))

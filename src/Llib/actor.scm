@@ -19,14 +19,15 @@
    (import concurrent-queue)
    (library pthread)
    (export
-    (class &actor-receive-timout-error::&error)
+    (class &actor-receive-timeout-error::&error)
     (actor-send actor msg)
     (actor-receive actor #!optional (timeout::long 0))
     (make-actor body)
     (inline actor-start! actor)
     (inline actor-start-joinable! actor)
     (inline actor-join! actor)
-    (inline current-actor))
+    (inline current-actor)
+    (actor? actor))
    (static (class %actor::pthread
 	      (mailbox (default (make-concurrent-queue))))))
 
@@ -35,8 +36,14 @@
 (define (make-actor body)
    (instantiate::%actor (body body)))
 
+(define (actor? actor)
+   (%actor? actor))
+
 (define-inline (current-actor)
-   (current-thread))
+   (let ((t (current-thread)))
+      (if (actor? t)
+	  t
+	  #unspecified)))
 
 (define-inline (actor-start! actor)
    (thread-start! actor))
@@ -56,8 +63,8 @@
 
 (define (actor-receive actor #!optional (timeout::long 0))
    (with-handler (lambda (e)
-		    (if (&concurrent-queue-timout-error? e)
-			(raise (instantiate::&actor-receive-timout-error
+		    (if (&concurrent-queue-timeout-error? e)
+			(raise (instantiate::&actor-receive-timeout-error
 				  (proc "actor-receive")
 				  (msg "actor-receive timed out")
 				  (obj actor)))

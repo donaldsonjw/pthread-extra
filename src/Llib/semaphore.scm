@@ -23,8 +23,11 @@
        (cond-var (default (make-condition-variable)))))
    (export (semaphore-signal! sem #!optional (count 1))
 	   (semaphore-wait! sem #!optional (timeout::long 0))
-	   (make-semaphore permits)))
+	   (make-semaphore permits)
+	   (semaphore? sem)))
 
+(define (semaphore? sem)
+   (%semaphore? sem))
 
 (define (make-semaphore permits)
    (instantiate::%semaphore (permits permits)))

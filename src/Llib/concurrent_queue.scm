@@ -17,10 +17,11 @@
 
 (module concurrent-queue
    (library pthread)
-   (export (class &concurrent-queue-timout-error::&error)
+   (export (class &concurrent-queue-timeout-error::&error)
 	   (make-concurrent-queue)
 	   (concurrent-queue-enqueue! q item)
-	   (concurrent-queue-dequeue! q #!optional (timeout::long 0)))
+	   (concurrent-queue-dequeue! q #!optional (timeout::long 0))
+	   (concurrent-queue? q))
    (static
     (class %queue
        first
@@ -35,6 +36,8 @@
    (let ((dummy (cons 'dummy '())))
       (instantiate::%queue (first dummy) (last dummy))))
 
+(define (concurrent-queue? q)
+   (%queue? q))
 
 (define (concurrent-queue-enqueue! q item)
    (with-access::%queue q (last enqueue-mutex cond-var)
@@ -59,7 +62,7 @@
 			      (if (condition-variable-wait! cond-var
 					dequeue-mutex timeout)
 				  (loop)
-				  (raise (instantiate::&concurrent-queue-timout-error
+				  (raise (instantiate::&concurrent-queue-timeout-error
 					    (proc "concurrent-queue-dequeue!")
 					    (msg "concurrent-queue-dequeue! timed out")
 					    (obj q))))))))))
