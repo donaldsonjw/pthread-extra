@@ -38,7 +38,7 @@
 	   (rw-lock? rw-lock)))
 
 (define (rw-lock? rw-lock)
-   (%rw-lock? rw-lock))
+   (isa? rw-lock %rw-lock))
 
 (define (make-rw-lock)
    (instantiate::%rw-lock))

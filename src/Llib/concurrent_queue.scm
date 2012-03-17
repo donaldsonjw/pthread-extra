@@ -21,7 +21,8 @@
 	   (make-concurrent-queue)
 	   (concurrent-queue-enqueue! q item)
 	   (concurrent-queue-dequeue! q #!optional (timeout::long 0))
-	   (concurrent-queue? q))
+	   (concurrent-queue? q)
+	   (concurrent-queue-empty? q))
    (static
     (class %queue
        first
@@ -36,8 +37,12 @@
    (let ((dummy (cons 'dummy '())))
       (instantiate::%queue (first dummy) (last dummy))))
 
+(define (concurrent-queue-empty? q)
+   (with-access::%queue q (first last)
+      (eq? first last)))
+
 (define (concurrent-queue? q)
-   (%queue? q))
+   (isa? q %queue))
 
 (define (concurrent-queue-enqueue! q item)
    (with-access::%queue q (last enqueue-mutex cond-var)

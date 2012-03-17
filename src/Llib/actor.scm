@@ -22,7 +22,7 @@
     (class &actor-receive-timeout-error::&error)
     (actor-send actor msg)
     (actor-receive actor #!optional (timeout::long 0))
-    (make-actor body)
+    (make-actor body #!optional (name (gensym 'actor)))
     (inline actor-start! actor)
     (inline actor-start-joinable! actor)
     (inline actor-join! actor)
@@ -33,11 +33,11 @@
 
 
 
-(define (make-actor body)
-   (instantiate::%actor (body body)))
+(define (make-actor body #!optional (name (gensym 'actor)))
+   (instantiate::%actor (body body) (name name)))
 
 (define (actor? actor)
-   (%actor? actor))
+   (isa? actor %actor))
 
 (define-inline (current-actor)
    (let ((t (current-thread)))
@@ -59,11 +59,12 @@
       (concurrent-queue-enqueue! mailbox msg)))
 
 (define (actor-mailbox actor)
-   (%actor-mailbox actor))
+   (let ((actor::%actor actor))
+      (-> actor mailbox)))
 
 (define (actor-receive actor #!optional (timeout::long 0))
    (with-handler (lambda (e)
-		    (if (&concurrent-queue-timeout-error? e)
+		    (if (isa? e &concurrent-queue-timeout-error)
 			(raise (instantiate::&actor-receive-timeout-error
 				  (proc "actor-receive")
 				  (msg "actor-receive timed out")

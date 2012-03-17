@@ -40,7 +40,7 @@ DISTDIR = dist
 BIGLOOSRCS = src/Llib/work-queue.scm src/Llib/rw-lock.scm \
 	     src/Llib/semaphore.scm src/Llib/future.scm \
              src/Llib/concurrent_queue.scm src/Llib/actor.scm \
-	     src/Llib/barrier.scm
+	     src/Llib/barrier.scm src/Llib/threadless_actor.scm
 HEAPSRC = src/Misc/make_lib.scm
 
 
@@ -106,7 +106,7 @@ lib_s: $(OBJDIR) $(DISTDIR) $(SAFEOBJECTS)
 	$(LD) -G -o $(DISTDIR)/libpthread-extra_s-$(VERSION).so $(SAFEOBJECTS) -lc -lm
 
 lib_s.a : $(OBJDIR) $(DISTDIR) $(SAFEOBJECTS)
-	$(AR) qcv $(DISTDIR)/libpthread-extra_s-$(VERSION).a $(SAFEOBJECTS);\
+	$(AR) rcv $(DISTDIR)/libpthread-extra_s-$(VERSION).a $(SAFEOBJECTS);\
 	$(RANLIB) $(DISTDIR)/libpthread-extra_s-$(VERSION).a
 
 lib_es : $(OBJDIR) $(DISTDIR) $(ESAFEOBJECTS)

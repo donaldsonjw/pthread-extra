@@ -42,12 +42,12 @@
 			
 
 (define (future? future)
-   (%future? future))
+   (isa? future %future))
 
 (define (make-future thunk)
-   (let ((res (instantiate::%future))) 
-      (%future-thread-set! res (make-future-thread res thunk))
-      (thread-start! (%future-thread res))
+   (let ((res::%future (instantiate::%future))) 
+      (set! (-> res thread) (make-future-thread res thunk))
+      (thread-start! (-> res thread))
       res))
 
 

@@ -27,7 +27,7 @@
 	   (semaphore? sem)))
 
 (define (semaphore? sem)
-   (%semaphore? sem))
+   (isa? sem %semaphore))
 
 (define (make-semaphore permits)
    (instantiate::%semaphore (permits permits)))

@@ -102,12 +102,14 @@
 			 (reverse *failure*))))))
 
 
-;;;; cond-expand
-(define-test cond-expand
-   (cond-expand
-      (pthread-extra #t)
-      (else #f))
-   :result #t)
+
+;;;; cond-expand	   
+(define-test cond-expand 
+   (cond-expand	   
+      (pthread-extra #t) 
+      (else #f))	   
+   :result #t)	   
+
 
 
 ;;;; make-work-queue
@@ -119,6 +121,12 @@
 		  (work-queue? v))))
 
 
+(define-test work-queue-empty?
+   (make-work-queue 3)
+   :result (lambda (v)
+	      (if (eq? v 'result)
+		  "a empty work-queue"
+		  (work-queue-empty? v))))
 
 (define-test work-queue-push!
    (with-output-to-string
@@ -154,7 +162,7 @@
 (define-test future-timeout-error
    (let ((future (make-future (lambda () (thread-sleep! 5000000) 5))))
       (with-handler (lambda (e)
-		       (if (&future-timeout-error? e)
+		       (if (isa?  e &future-timeout-error)
 			   'time-out
 			   (raise e)))
 		    (future-touch future 1000)))
@@ -171,6 +179,13 @@
 	      (if (eq? v 'result)
 		  "the concurrent queue"
 		  (concurrent-queue? v))))
+
+(define-test concurrent-queue-empty?
+   (concurrent-queue-empty? (make-concurrent-queue))
+   :result (lambda (v)
+	      (if (eq? v 'result)
+		  "#t"
+		   v)))
 
 (define-test enqueue&dequeue
    (let ((q (make-concurrent-queue)))
@@ -233,7 +248,7 @@
 (define-test concurrent-queue-timeout
    (let ((q (make-concurrent-queue)))
       (with-handler (lambda (e)
-		       (if (&concurrent-queue-timeout-error? e)
+		       (if (isa? e &concurrent-queue-timeout-error)
 			   'time-out
 			   (raise e)))
 		    (concurrent-queue-dequeue! q 1000)))
@@ -306,7 +321,7 @@
    (let ((t (make-actor
 	       (lambda ()
 		  (with-handler (lambda (e)
-				   (if (&actor-receive-timeout-error? e)
+				   (if (isa?  e &actor-receive-timeout-error)
 			   'time-out
 			   (raise e)))
 		    (actor-receive (current-actor) 1000))))))
@@ -355,7 +370,7 @@
 	  (t (instantiate::pthread
 		(body (lambda ()
 			 (with-handler (lambda (e)
-					  (if (&barrier-timeout-error? e)
+					  (if (isa? e &barrier-timeout-error)
 					      'time-out
 					      (raise e)))
 				       (barrier-wait! b 1000)))))))

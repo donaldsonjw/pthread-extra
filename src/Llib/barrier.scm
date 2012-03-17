@@ -39,7 +39,7 @@
 
 
 (define (barrier? barrier)
-   (%barrier? barrier))
+   (isa? barrier %barrier))
 
 
 
@@ -83,7 +83,8 @@
 			    my-index)))))))))
 
 (define (barrier-parties barrier)
-   (%barrier-parties barrier))
+   (let ((barrier::%barrier barrier))
+      (-> barrier parties)))
 
 
 (define (barrier-get-number-waiting barrier)

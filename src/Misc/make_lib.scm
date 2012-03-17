@@ -23,4 +23,5 @@
    (import concurrent-queue)
    (import actor)
    (import barrier)
+   (import threadless-actor)
    (eval (export-all)))

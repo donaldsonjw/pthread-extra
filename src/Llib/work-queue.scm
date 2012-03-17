@@ -37,7 +37,8 @@
    (export (make-work-queue max-threads)
 	   (work-queue-finish! queue)
 	   (work-queue-push! queue thunk2)
-	   (work-queue? queue)))
+	   (work-queue? queue)
+	   (work-queue-empty? queue)))
 
 
 (define (make-work-queue max-threads)
@@ -48,117 +49,117 @@
 		 (finish #f)
 		 (mutex (make-mutex))
 		 (condition-variable (make-condition-variable))
-		 (first (%work-queue-item-nil))
-		 (last (%work-queue-item-nil)))))
+		 (first (class-nil %work-queue-item))
+		 (last (class-nil %work-queue-item)))))
       nwq))
 
 
 (define (work-queue? queue)
-   (%work-queue? queue))
+   (isa?  queue %work-queue))
 
 (define (work-queue-empty? queue)
    (with-access::%work-queue queue (first last)
-      (eq? first (%work-queue-item-nil))))
+      (eq? first (class-nil %work-queue-item))))
 
 (define +work-wait-time+ 60000)
 
-(define (make-work-queue-thread-thunk queue)
-   (define (wait-for-work queue)
+(define (make-work-queue-thread-thunk queue::%work-queue)
+   (define (wait-for-work queue::%work-queue)
       (let loop ((empty? (work-queue-empty? queue)))
-	 (if (and empty? (not (%work-queue-finish queue)))
+	 (if (and empty? (not (-> queue finish )))
 	     (begin
 		;; indicate we have an idle thread
-		(%work-queue-idle-threads-set!
-		   queue (+ (%work-queue-idle-threads queue) 1))
+		(set! (-> queue idle-threads )
+		   (+ (-> queue idle-threads ) 1))
 		(let ((res (condition-variable-wait!
-			      (%work-queue-condition-variable
-				 queue)
-			      (%work-queue-mutex queue)
+			      (-> queue condition-variable)
+			      (-> queue mutex )
 			      +work-wait-time+)))
 		   (if (not res)
 		       (begin
-			  (%work-queue-idle-threads-set!
-			     queue
-			     (- (%work-queue-idle-threads queue) 1))
-			  (print "ending idle thread")
+			  (set!
+			     (-> queue idle-threads)
+			     (- (-> queue idle-threads) 1))
 			  #f)
 		       (begin
-			  (%work-queue-idle-threads-set!
-			     queue (- (%work-queue-idle-threads queue) 1))
+			  (set! (-> queue idle-threads)
+			     (- (-> queue idle-threads) 1))
 			  (loop (work-queue-empty? queue))))))
-		(if (or (not (%work-queue-finish queue))
-			(not empty?))
-		    #t
-		    #f))))
+	     (if (not empty?)
+		 #t
+		 #f))))
 		 
    (lambda ()
-      (with-lock (%work-queue-mutex queue)
+      (with-lock (-> queue mutex )
             (lambda ()
-	       (let loop ((finish (%work-queue-finish queue)))
+	       (let loop ((finish (-> queue finish )))
 		  (when (wait-for-work queue)
 		     (let ((thunk2 (%work-queue-pop! queue)))
-			(mutex-unlock! (%work-queue-mutex queue))
+			(mutex-unlock! (-> queue mutex ))
 			(thunk2)
-			(mutex-lock! (%work-queue-mutex queue)))
-		     (loop (%work-queue-finish queue))))
+			(mutex-lock! (-> queue mutex )))
+		     (loop (-> queue finish ))))
 	       ;(flush-output-port (current-output-port))
-	       (%work-queue-current-threads-set!
-		queue
-		(- (%work-queue-current-threads queue) 1))
-	       (when (= (%work-queue-current-threads queue) 0)
-		  (condition-variable-signal! (%work-queue-condition-variable queue)))
+	       (set!
+		(-> queue current-threads)
+		(- (-> queue current-threads) 1))
+	       (when (= (-> queue current-threads) 0)
+		  (condition-variable-signal! (-> queue condition-variable)))
 	       ))))
 			 
 			 
 		      		     
 (define (work-queue-finish! queue)
-   (with-lock (%work-queue-mutex queue)
-      (lambda ()
-	 (%work-queue-finish-set! queue #t)
-	 (condition-variable-broadcast! (%work-queue-condition-variable queue))
-	 (let loop ((rt (%work-queue-current-threads queue)))
-	    (when (> rt 0)
-	       (condition-variable-wait! (%work-queue-condition-variable queue)
-		  (%work-queue-mutex queue))
-	       (loop (%work-queue-current-threads queue)))))))
+   (let ((queue::%work-queue queue))
+      (with-lock (-> queue mutex)
+	 (lambda ()
+	    (set! (-> queue finish) #t)
+	    (condition-variable-broadcast! (-> queue condition-variable))
+	    (let loop ((rt (-> queue current-threads)))
+	       (when (> rt 0)
+		  (condition-variable-wait! (-> queue condition-variable )
+		     (-> queue mutex))
+		  (loop (-> queue current-threads))))))))
 
 (define (work-queue-push! queue thunk2)
-   (with-access::%work-queue queue (mutex
-				    condition-variable
-				    first
-				    last
-				    current-threads
-				    idle-threads
-				    max-threads)
-      (let ((nwi (instantiate::%work-queue-item
-		    (thunk thunk2)
-		    (next (%work-queue-item-nil)))))
-	 (with-lock mutex
-	    (lambda ()
-	       (if (work-queue-empty? queue)
-		   (begin
-		      (set! first nwi)
-		      (set! last nwi))
-		   (begin
-		      (%work-queue-item-next-set! last
-						  nwi)
-		      (set! last nwi)))
-	       (if (> idle-threads 0)
-		   (condition-variable-signal! condition-variable)
-		   (when (< current-threads max-threads)
-		      (thread-start!
-		       (instantiate::pthread
-			  (body (make-work-queue-thread-thunk queue))))
-		      (set! current-threads (+ current-threads 1)))))))))
-
+   (let ((q::%work-queue queue))
+      (with-access::%work-queue queue (mutex
+					 condition-variable
+					 first
+					 last
+					 current-threads
+					 idle-threads
+					 max-threads)
+	 (let ((nwi (instantiate::%work-queue-item
+		       (thunk thunk2)
+		       (next (class-nil %work-queue-item)))))
+	    (with-lock mutex
+	       (lambda ()
+		  (if (work-queue-empty? q)
+		      (begin
+			 (set! first nwi)
+			 (set! last nwi))
+		      (begin
+			 (set! (-> q last next)
+			    nwi)
+			 (set! last nwi)))
+		  (flush-output-port (current-output-port))
+		  (if (> idle-threads 0)
+		      (condition-variable-signal! condition-variable)
+		      (when (< current-threads max-threads)
+			 (thread-start!
+			    (instantiate::pthread
+			       (body (make-work-queue-thread-thunk queue))))
+			 (set! current-threads (+ current-threads 1))))))))))
+   
 	       
 		   
 ;;; assumes the mutex used to protect the queue has already been obtained
 (define (%work-queue-pop! queue::%work-queue)
    (with-access::%work-queue queue (first)
-      (let ((item first))
-	 (set! first (%work-queue-item-next item))
-	 (%work-queue-item-thunk item))))
+      (let ((item::%work-queue-item first))
+	 (set! first (-> item next ))
+	 (->  item thunk))))
 
 
    
@@ -167,7 +168,7 @@
 #;(define (main args)
    (let ((work-queue (make-work-queue 6)))
       (work-queue-empty? work-queue)
-      (print (%work-queue-item-thunk (%work-queue-item-nil)))
+      (print (%work-queue-item-thunk (class-nil %work-queue-item)))
       (do ((i 0 (+ i 1)))
 	  ((= i 3000))
 	  ;(print work-queue)
