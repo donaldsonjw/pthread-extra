@@ -1,4 +1,4 @@
-;;;; Copyright(c) 2010 Joseph Donaldson(donaldsonjw@yahoo.com) 
+;;;; Copyright(c) 2010, 2012 Joseph Donaldson(donaldsonjw@yahoo.com) 
 ;;;; This file is part of Pthread-extra.
 ;;;;
 ;;;;     Pthread-extra is free software: you can redistribute it and/or modify
@@ -24,4 +24,5 @@
    (import actor)
    (import barrier)
    (import threadless-actor)
+   (import atomics)
    (eval (export-all)))

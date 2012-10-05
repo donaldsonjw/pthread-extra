@@ -40,7 +40,8 @@ DISTDIR = dist
 BIGLOOSRCS = src/Llib/work-queue.scm src/Llib/rw-lock.scm \
 	     src/Llib/semaphore.scm src/Llib/future.scm \
              src/Llib/concurrent_queue.scm src/Llib/actor.scm \
-	     src/Llib/barrier.scm src/Llib/threadless_actor.scm
+	     src/Llib/barrier.scm src/Llib/threadless_actor.scm \
+	     src/Llib/atomics.scm
 HEAPSRC = src/Misc/make_lib.scm
 
 
