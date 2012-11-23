@@ -25,4 +25,5 @@
    (import barrier)
    (import threadless-actor)
    (import atomics)
+   (import mvar)
    (eval (export-all)))
