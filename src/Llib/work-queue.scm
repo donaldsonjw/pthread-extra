@@ -20,7 +20,8 @@
 ;;;; David Butenhof's Programming with POSIX Threads
 (module work-queue
    (library pthread)
-   (import concurrent-queue)
+   (import concurrent-queue
+	   atomics)
    (static
     (class %work-queue-item 
        thunk::procedure
@@ -60,7 +61,31 @@
    (with-access::%work-queue queue ((q2 queue))
       (concurrent-queue-empty? q2)))
 
-(define +work-wait-time+ 60000)
+(define +work-wait-time+ 1000)
+
+; (define-inline (idle-threads-inc! queue::%work-queue)
+;    (with-access::%work-queue queue (idle-threads)
+;       (let loop ((t (atomic-compare-and-set! idle-threads
+; 		       (atomic-get idle-threads)
+; 		       (+ (atomic-get idle-threads) 1))))
+; 	 (if (not t)
+; 	     (loop (atomic-compare-and-set! idle-threads
+; 		      (atomic-get idle-threads)
+; 		      (+ (atomic-get idle-threads) 1)))))))
+
+; (define-inline (idle-threads-dec! queue::%work-queue)
+;    (with-access::%work-queue queue (idle-threads)
+;       (let loop ((t (atomic-compare-and-set! idle-threads
+; 			(atomic-get idle-threads)
+; 			(- (atomic-get idle-threads) 1))))
+; 	 (if (not t)
+; 	     (loop (atomic-compare-and-set! idle-threads
+; 		      (atomic-get idle-threads)
+; 		      (- (atomic-get idle-threads) 1)))))))
+
+; (define-inline (idle-threads queue::%work-queue)
+;    (with-access::%work-queue queue (idle-threads)
+;       (atomic-get idle-threads)))
 
 (define-inline (idle-threads-inc! queue::%work-queue)
    (with-access::%work-queue queue (mutex idle-threads)
@@ -75,6 +100,7 @@
 	 (lambda ()
 	    (set! idle-threads
 	       (- idle-threads  1))))))
+
 
 (define-inline (idle-threads queue::%work-queue)
    (with-access::%work-queue queue (mutex idle-threads)
@@ -103,6 +129,43 @@
 	 (lambda ()
 	    current-threads))))
 
+; (define-inline (current-threads-inc! queue::%work-queue)
+;    (with-access::%work-queue queue (current-threads)
+;       (let loop ((t (atomic-compare-and-set! current-threads
+; 		       (atomic-get current-threads)
+; 		       (+ (atomic-get current-threads) 1))))
+; 	 (if (not t)
+; 	     (loop (atomic-compare-and-set! current-threads
+; 		      (atomic-get current-threads)
+; 		      (+ (atomic-get current-threads) 1)))))))
+
+; (define-inline (current-threads-dec! queue::%work-queue)
+;    (with-access::%work-queue queue (current-threads)
+;       (let loop ((t (atomic-compare-and-set! current-threads
+; 			(atomic-get current-threads)
+; 			(- (atomic-get current-threads) 1))))
+; 	 (if (not t)
+; 	     (loop (atomic-compare-and-set! current-threads
+; 		      (atomic-get current-threads)
+; 		      (- (atomic-get current-threads) 1)))))
+;       (atomic-get current-threads)))
+
+; (define-inline (current-threads queue::%work-queue)
+;    (with-access::%work-queue queue (current-threads)
+;       (atomic-get current-threads)))
+
+(define-inline (finish queue)
+   (with-access::%work-queue queue (mutex finish)
+      (with-lock mutex
+	 (lambda ()
+	    finish))))
+
+(define-inline (finish-set! queue b)
+   (with-access::%work-queue queue (mutex finish)
+      (with-lock mutex
+	 (lambda ()
+	    (set! finish b)))))
+
 (define (make-work-queue-thread-thunk queue::%work-queue)
    (define (wait-for-work queue::%work-queue)
       ;; indicate we have an idle thread
@@ -121,15 +184,18 @@
 		       res)))
 							
    (lambda ()
-      (let loop ((finish (-> queue finish )))
-	 (when (not finish)
-	    (let ((thunk2 (wait-for-work queue)))
-	       (when thunk2 
-		  (thunk2)
-		  (loop (-> queue finish )))))
-
-	 ;; signal we are done
-	 (when (<=  (current-threads-dec! queue) 0)
+      (current-threads-inc! queue)
+      (let loop ((thunk2 (wait-for-work queue)))
+	 (when thunk2 
+	    (thunk2)
+	    (loop (wait-for-work queue))))
+      
+      ;; signal we are done
+      (let ((ct (current-threads-dec! queue)))
+	 ;(fprint (current-error-port) "current threads is ct:" ct)
+	 ;(fprint (current-error-port) "finish: " (finish queue))
+	 (when (and (finish queue)
+		    (<=  ct 0))
 	    (condition-variable-signal! (-> queue condvar))))))
 			 
 			 
@@ -139,9 +205,12 @@
       (with-lock (-> queue mutex)
 	 (lambda ()
 	    (set! (-> queue finish) #t)
-	    (when (> (-> queue current-threads) 0)
-	       (condition-variable-wait! (-> queue condvar)
-		  (-> queue mutex)))))))
+	    (let loop ((ct (-> queue current-threads)))
+	       (when (> ct  0)
+		  ;(fprint (current-error-port) "in finish! current threads is ct:" ct)
+		  (when (not (condition-variable-wait! (-> queue condvar)
+				(-> queue mutex) 1000))
+		     (loop (-> queue current-threads)))))))))
 
 
 (define (work-queue-push! queue thunk2)
@@ -153,9 +222,7 @@
 		    (< (current-threads queue) max-threads))
 	    (thread-start!
 	       (instantiate::pthread
-		  (body (make-work-queue-thread-thunk queue))))
-
-	    (current-threads-inc! queue)))))
+		  (body (make-work-queue-thread-thunk queue))))))))
    
 	       
 

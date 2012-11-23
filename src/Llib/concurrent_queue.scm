@@ -54,24 +54,28 @@
 	       (condition-variable-signal! cond-var))))))
 
 
+(define (thread-name thread::thread)
+   (-> thread name))
+
 (define (concurrent-queue-dequeue! q #!optional (timeout::long 0))
-   (with-access::%queue q (first dequeue-mutex cond-var)
+   (with-access::%queue q (dequeue-mutex cond-var)
       (let ((res (with-lock dequeue-mutex
 		    (lambda ()
-		       (let loop ()
-			  (if (pair? (cdr first))
-			      (let ((r (cadr first)))
-				 (set-car! (cdr first) 'dummy)
-				 (set! first (cdr first))
-				 r)
-			      (if (condition-variable-wait! cond-var
+		       (with-access::%queue q (first)
+			   (let loop ()
+			     (if (pair? (cdr first))
+				 (let ((r (cadr first)))
+				    (set-car! (cdr first) 'dummy)
+				    (set! first (cdr first))
+				    r)
+				 (if (condition-variable-wait! cond-var
 					dequeue-mutex timeout)
-				  (loop)
-				  (raise (instantiate::&concurrent-queue-timeout-error
-					    (proc "concurrent-queue-dequeue!")
-					    (msg "concurrent-queue-dequeue! timed out")
-					    (obj q))))))))))
-	 res)))
+				     (loop)
+				     (raise (instantiate::&concurrent-queue-timeout-error
+					       (proc "concurrent-queue-dequeue!")
+					       (msg "concurrent-queue-dequeue! timed out")
+					       (obj q)))))))))))
+	    res)))
 			   
 			      
 

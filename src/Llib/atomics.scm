@@ -57,6 +57,7 @@
 
 
 (define-method (atomic-get a::atomic-boolean)
+   (pragma::void "__sync_synchronize()")
    (-> a val))
 
 (define-method (atomic-get-and-set! a::atomic-boolean val)
@@ -86,6 +87,7 @@
 
 
 (define-method (atomic-get a::atomic-int)
+   (pragma::void "__sync_synchronize()")
    (-> a val))
 
 (define-method (atomic-get-and-set! a::atomic-int val)
@@ -113,6 +115,7 @@
 
 
 (define-method (atomic-get a::atomic-long)
+   (pragma::void "__sync_synchronize()")
    (-> a val))
 
 (define-method (atomic-get-and-set! a::atomic-long val)
@@ -140,6 +143,7 @@
 
 
 (define-method (atomic-get a::atomic-llong)
+   (pragma::void "__sync_synchronize()")
    (-> a val))
 
 (define-method (atomic-get-and-set! a::atomic-llong val)
@@ -167,6 +171,7 @@
 
 
 (define-method (atomic-get a::atomic-obj)
+   (pragma::void "__sync_synchronize()")
    (-> a val))
 
 (define-method (atomic-get-and-set! a::atomic-obj val)
